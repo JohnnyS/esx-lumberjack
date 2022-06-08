@@ -1,9 +1,9 @@
 # Fork Details
 
-Usage with OX_Inventory
-Uses Ox_Lib TextUI
-Changes to the menu as well
-Uses minigame of (https://github.com/evanillaa/qb-lock)
+- Usage with OX_Inventory
+- Uses Ox_Lib TextUI
+- Changes to the menu as well
+- Uses minigame of (https://github.com/evanillaa/qb-lock)
 
 # esx-lumberjack
 
