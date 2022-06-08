@@ -1,3 +1,4 @@
+local ox_inventory = exports.ox_inventory
 local Chopped = false
 
 RegisterNetEvent('esx-lumberjack:sellItems', function()
@@ -5,10 +6,10 @@ RegisterNetEvent('esx-lumberjack:sellItems', function()
     local price = 0
     local xPlayer = ESX.GetPlayerFromId(source)
     for k,v in pairs(Config.Sell) do 
-        local item = xPlayer.getInventoryItem(k)
-        if item and item.count >= 1 then
-            price = price + (v * item.count)
-            xPlayer.removeInventoryItem(k, item.count)
+        local item = ox_inventory:GetItem(source, k, nil, true)
+        if item >= 1 then
+            price = price + (v * item)
+            ox_inventory:RemoveItem(source, k, item)
         end
     end
     if price > 0 then
@@ -23,17 +24,22 @@ RegisterNetEvent('esx-lumberjack:BuyAxe', function()
     local source = source
     local xPlayer = ESX.GetPlayerFromId(source)
     local TRAxeClassicPrice = LumberJob.AxePrice
-    local axe = xPlayer.hasWeapon('WEAPON_BATTLEAXE')
-    if not axe then
-        xPlayer.addWeapon('WEAPON_BATTLEAXE', ammo)
-        xPlayer.removeMoney("cash", TRAxeClassicPrice)
-        xPlayer.showNotification(Config.Alerts["axe_bought"], true, false, 140)
-    elseif axe then
+    local hasAxe = ox_inventory:GetItem(source, 'axe', nil, true)
+    
+    if hasAxe < 1 then
+        if ox_inventory:CanCarryItem(source, 'axe', 1) then
+            ox_inventory:AddItem(source, 'axe', 1)
+            ox_inventory:RemoveItem(source, 'money', TRAxeClassicPrice)
+            xPlayer.showNotification(Config.Alerts["axe_bought"], true, false, 140)
+        else
+            --Cant Carry
+        end
+    else
         xPlayer.showNotification(Config.Alerts["axe_check"], true, false, 140)
     end
 end)
 
-ESX.RegisterServerCallback('esx-lumberjack:axe', function(source, cb)
+ESX.RegisterServerCallback('esx-lumberjack:axe', function(source, cb) --Doesnt seem to be used?
     local xPlayer = ESX.GetPlayerFromId(source)
     if xPlayer then
         if xPlayer.hasWeapon('WEAPON_BATTLEAXE') then
@@ -68,14 +74,20 @@ RegisterServerEvent('esx-lumberjack:recivelumber', function()
     local xPlayer = ESX.GetPlayerFromId(source)
     local lumber = math.random(LumberJob.LumberAmount_Min, LumberJob.LumberAmount_Max)
     local bark = math.random(LumberJob.TreeBarkAmount_Min, LumberJob.TreeBarkAmount_Max)
-    xPlayer.addInventoryItem('tree_lumber', lumber)
-    xPlayer.addInventoryItem('tree_bark', bark)
+    if ox_inventory:CanCarryItem(source, 'tree_lumber', lumber) and ox_inventory:CanCarryItem(source, 'tree_bark', bark) then
+        ox_inventory:AddItem(source, 'tree_lumber', lumber)
+        ox_inventory:AddItem(source, 'tree_bark', bark)
+    else
+        --Cant carry
+    end
 end)
 
 ESX.RegisterServerCallback('esx-lumberjack:lumber', function(source, cb)
     local xPlayer = ESX.GetPlayerFromId(source)
+    local hasLumber = ox_inventory:GetItem(source, 'tree_lumber', nil, true)
+
     if xPlayer then
-        if xPlayer.getInventoryItem("tree_lumber").count >= 1 then
+        if hasLumber >= 1 then
             cb(true)
         else
             cb(false)
@@ -86,45 +98,33 @@ end)
 RegisterServerEvent('esx-lumberjack:lumberprocessed', function()
     local source = source
     local xPlayer = ESX.GetPlayerFromId(source)
-    local lumber = xPlayer.getInventoryItem('tree_lumber')
+    local lumber = ox_inventory:GetItem(source, 'tree_lumber', nil, true)
     local TradeAmount = math.random(LumberJob.TradeAmount_Min, LumberJob.TradeAmount_Max)
     local TradeRecevied = math.random(LumberJob.TradeRecevied_Min, LumberJob.TradeRecevied_Max)
-    if lumber.count < 1 then 
+
+    if lumber < 1 then
         xPlayer.showNotification(Config.Alerts['error_lumber'])
         return false
     end
 
-    local amount = lumber.count
+    local amount = lumber
     if amount >= 1 then
         amount = TradeAmount
     else
       return false
     end
-    if lumber.count >= amount then 
-        xPlayer.removeInventoryItem('tree_lumber', amount)
-        xPlayer.showNotification(Config.Alerts["lumber_processed_trade"] ..TradeAmount.. Config.Alerts["lumber_processed_lumberamount"] ..TradeRecevied.. Config.Alerts["lumber_processed_received"])
-        Wait(750)
-        xPlayer.addInventoryItem('wood_plank', TradeRecevied)
+    if lumber >= amount then
+        if ox_inventory:CanCarryItem(source, 'wood_plank', amount) then
+            ox_inventory:RemoveItem(source, 'tree_lumber', amount)
+            xPlayer.showNotification(Config.Alerts["lumber_processed_trade"] ..TradeAmount.. Config.Alerts["lumber_processed_lumberamount"] ..TradeRecevied.. Config.Alerts["lumber_processed_received"])
+            Wait(750)
+            ox_inventory:AddItem(source, 'wood_plank', TradeRecevied)
+        else
+        end
     else 
         xPlayer.showNotification(Config.Alerts['itemamount'])
         return false
     end
 end)
 
-AddEventHandler('onResourceStart', function(resourceName)
-    if (GetCurrentResourceName() ~= resourceName) then
-        return
-    end
-    print("-------------------------------------------------------------------------------------------------------------")
-    print("███████╗ ██████╗██╗  ██╗ ██╗     ██╗   ██╗███╗   ███╗██████╗ ███████╗██████╗      ██╗ █████╗  █████╗ ██╗  ██╗ ")
-    print("██╔═══  ██╔════╝╚██╗██╔╝ ██║     ██║   ██║████╗ ████║██╔══██╗██╔════╝██╔══██╗     ██║██╔══██╗██╔══██╗██║██╔╝ ")
-    print("█████╗  ╚█████╗  ╚███╔╝  ██║     ██║   ██║██╔████╔██║██████╦╝█████╗  ██████╔╝     ██║███████║██║  ╚═╝█████═╝ ")
-    print("██╔══╝   ╚═══██╗ ██╔██╗  ██║     ██║   ██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗██╗  ██║██╔══██║██║  ██╗██╔═██╗ ")
-    print("███████╗██████╔╝██╔╝╚██╗ ███████╗╚██████╔╝██║ ╚═╝ ██║██████╦╝███████╗██║  ██║╚█████╔╝██║  ██║╚█████╔╝██║ ╚██╗")
-    print("╚══════╝╚═════╝ ╚═╝  ╚═╝ ╚══════╝ ╚═════╝ ╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚════╝ ╚═╝  ╚═╝ ╚════╝ ╚═╝  ╚═╝ ")
-    print("              Converted By Mycroft (Manager of ESX-Framework) & Benzo (Head Of ESX-Support)")
-    print("                               Website: https://docs.esx-framework.org")
-    print("                                TRClassic: https://dsc.gg/trclassic")
-    print("                    Original Script: https://github.com/trclassic92/tr-lumberjack")
-    print("---------------------------------------------------------------------------------------------------------------")                                                                                                                                
-  end)
+
