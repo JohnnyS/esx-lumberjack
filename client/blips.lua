@@ -1,28 +1,66 @@
-if Config.UseBlips then
-    CreateThread(function()
-        for k,v in pairs(Config.Blips) do 
-            local Blip = AddBlipForCoord(v.coords)
-            SetBlipSprite (Blip, v.SetBlipSprite)
-            SetBlipDisplay(Blip, v.SetBlipDisplay)
-            SetBlipScale  (Blip, v.SetBlipScale)
-            SetBlipAsShortRange(Blip, true)
-            SetBlipColour(Blip, v.SetBlipColour)
+local lumberdepo = nil
+local lumberprocessing = nil
+local lumbersell = nil
+local TreeBlips = nil
+local LumberYard = vector3(-528.3692, 5314.325, 92.68567)
+
+function blips()
+    if ESX.PlayerData and ESX.PlayerData.job.name == 'lumberjack' then
+            lumberdepo = AddBlipForCoord(1167.73,-1347.27,33.92)
+            SetBlipSprite(lumberdepo, 85)
+            SetBlipDisplay(lumberdepo, 6)
+            SetBlipScale(lumberdepo, 0.8)
+            SetBlipColour(lumberdepo, 5)
+            SetBlipAsShortRange(lumberdepo, true)
             BeginTextCommandSetBlipName("STRING")
-            AddTextComponentSubstringPlayerName(v.BlipLabel)
-            EndTextCommandSetBlipName(Blip)
-            Config.Blips[k].blip = Blip
-        end
-        for k,v in pairs(Config.TreeLocations) do 
-            local Blip = AddBlipForCoord(v.coords)
-            SetBlipSprite (Blip, 79)
-            SetBlipDisplay(Blip, 6)
-            SetBlipScale  (Blip, 0.8)
-            SetBlipAsShortRange(Blip, true)
-            SetBlipColour(Blip, 2)
+            AddTextComponentString("1. ~g~Lumber Depo~g~")
+            EndTextCommandSetBlipName(lumberdepo)
+            
+            lumberprocessing = AddBlipForCoord(-516.9495,5331.996,80.25061)
+            SetBlipSprite(lumberprocessing, 480)
+            SetBlipDisplay(lumberprocessing, 6)
+            SetBlipScale(lumberprocessing, 0.7)
+            SetBlipColour(lumberprocessing, 11)
+            SetBlipAsShortRange(lumberprocessing, true)
             BeginTextCommandSetBlipName("STRING")
-            AddTextComponentSubstringPlayerName("Tree Field")
-            EndTextCommandSetBlipName(Blip)
-            Config.TreeLocations[k].blip = Blip
+            AddTextComponentString("3. ~o~Lumber Trader~o~")
+            EndTextCommandSetBlipName(lumberprocessing)
+            
+            lumbersell = AddBlipForCoord(-510.9626,-943.3714,24.0564)
+            SetBlipSprite(lumbersell, 500)
+            SetBlipDisplay(lumbersell, 6)
+            SetBlipScale(lumbersell, 1.00)
+            SetBlipColour(lumbersell, 69)
+            SetBlipAsShortRange(lumbersell, true)
+            BeginTextCommandSetBlipName("STRING")
+            AddTextComponentString("4. ~b~Lumber Seller~b~")
+            EndTextCommandSetBlipName(lumbersell)
+            
+            TreeBlips = AddBlipForRadius(LumberYard, 150.0)
+            SetBlipColour(TreeBlips, 2)
+            SetBlipDisplay(TreeBlips, 6)
+            SetBlipAlpha(TreeBlips, 128)
+            SetBlipAsShortRange(TreeBlips, true)
+    else
+            if lumberdepo ~= nil then
+            RemoveBlip(lumberdepo)
+            lumberdepo = nil
+            
+        if lumberprocessing ~= nil then
+            RemoveBlip(lumberprocessing)
+            lumberprocessing = nil
         end
-    end)
+        
+            if lumbersell ~= nil then
+            RemoveBlip(lumbersell)
+            lumbersell = nil
+        end
+        
+        if TreeBlips ~= nil then
+            RemoveBlip(TreeBlips)
+            TreeBlips = nil
+        end
+    end
 end
+end
+
