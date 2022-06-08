@@ -2,6 +2,27 @@ local chopping = false
 local LumberDepo = Config.Blips.LumberDepo
 local LumberProcessor = Config.Blips.LumberProcessor
 local LumberSeller = Config.Blips.LumberSeller
+local ox_inventory = exports.ox_inventory
+
+RegisterNetEvent('esx:playerLoaded')
+AddEventHandler('esx:playerLoaded', function(xPlayer)
+    ESX.PlayerData = xPlayer
+    ESX.PlayerLoaded = true
+    blips()
+end)
+
+RegisterNetEvent('esx:onPlayerLogout')
+AddEventHandler('esx:onPlayerLogout', function()
+	ESX.PlayerLoaded = false
+	ESX.PlayerData = {}
+end)
+
+RegisterNetEvent('esx:setJob')
+AddEventHandler('esx:setJob', function(job)
+	ESX.PlayerData.job = job
+    Wait(100)
+    blips()
+end)
 
 RegisterNetEvent('esx-lumberjack:getLumberStage', function(stage, state, k)
     Config.TreeLocations[k][stage] = state
@@ -15,16 +36,13 @@ local function loadAnimDict(dict)
 end
 
 local function axe()
-    local ped = PlayerPedId()
-    local pedWeapon = GetSelectedPedWeapon(ped)
-
-    for k, v in pairs(Config.Axe) do
-        if pedWeapon == k then
-            return true
-        end
+    local hasAxe = ox_inventory:Search('slots', 'axe')
+    if hasAxe then
+        return true
+    else
+        ESX.ShowNotification(Config.Alerts["error_axe"])
+        return false
     end
-
-    ESX.ShowNotification(Config.Alerts["error_axe"])
 end
 
 local function ChopLumber(k)
@@ -33,21 +51,18 @@ local function ChopLumber(k)
     local trClassic = PlayerPedId()
     local choptime = LumberJob.ChoppingTreeTimer
     chopping = true
-    FreezeEntityPosition(trClassic, true)
-    TriggerEvent("mythic_progbar:client:progress", {
-        name = "Chopping_Tree",
-        duration = choptime,
-        label = Config.Alerts["chopping_tree"],
-        useWhileDead = false,
-        canCancel = true,
-        controlDisables = {
-            disableMovement = true,
-            disableCarMovement = true,
-            disableMouse = false,
-            disableCombat = true,
-        },
-        animation = {}}, function(status)
-        if not status then
+    --FreezeEntityPosition(trClassic, true)
+    TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", true, k)
+    local success = exports['rcrp-minigame']:StartLockPickCircle(1, 15, success)
+    if success then
+        exports["esx_progressbar"]:Progressbar(Config.Alerts["chopping_tree"], 25000,{
+            FreezePlayer = true, 
+            animation ={
+                type = "anim",
+                dict = animDict, 
+                lib = animName 
+            }, 
+        onFinish = function()
             TriggerServerEvent('esx-lumberjack:setLumberStage', "isChopped", true, k)
             TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", false, k)
             TriggerServerEvent('esx-lumberjack:recivelumber')
@@ -55,42 +70,17 @@ local function ChopLumber(k)
             chopping = false
             TaskPlayAnim(trClassic, animDict, "exit", 3.0, 3.0, -1, 2, 0, 0, 0, 0)
             FreezeEntityPosition(trClassic, false)
-        else 
-                ClearPedTasks(trClassic)
-                TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", false, k)
-                chopping = false
-                TaskPlayAnim(trClassic, animDict, "exit", 3.0, 3.0, -1, 2, 0, 0, 0, 0)
-                FreezeEntityPosition(trClassic, false)
-        end
-    end)
-    -- QBCore.Functions.Progressbar("Chopping_Tree", Config.Alerts["chopping_tree"], choptime, false, true, {
-    --     disableMovement = true,
-    --     disableCarMovement = true,
-    --     disableMouse = false,
-    --     disableCombat = true,
-    -- }, {}, {}, {}, function()
-    --     TriggerServerEvent('esx-lumberjack:setLumberStage', "isChopped", true, k)
-    --     TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", false, k)
-    --     TriggerServerEvent('esx-lumberjack:recivelumber')
-    --     TriggerServerEvent('esx-lumberjack:setChoppedTimer')
-    --     chopping = false
-    --     TaskPlayAnim(trClassic, animDict, "exit", 3.0, 3.0, -1, 2, 0, 0, 0, 0)
-    --     FreezeEntityPosition(trClassic, false)
-    -- end, function()
-    --     ClearPedTasks(trClassic)
-    --     TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", false, k)
-    --     chopping = false
-    --     TaskPlayAnim(trClassic, animDict, "exit", 3.0, 3.0, -1, 2, 0, 0, 0, 0)
-    --     FreezeEntityPosition(trClassic, false)
-    -- end)
-    TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", true, k)
-    CreateThread(function()
-        while chopping do
-            loadAnimDict(animDict)
-            TaskPlayAnim(trClassic, animDict, animName, 3.0, 3.0, -1, 2, 0, 0, 0, 0 )
-            Wait(3000)
-        end
-    end)
+            end
+        })
+    else
+        TriggerServerEvent('esx-lumberjack:setLumberStage', "isOccupied", false, k)
+        exports['t-notify']:Custom({
+            style  =  'error',
+            duration  =  7000,
+            message  =  'Did you miss your swing?',
+            sound  =  true
+        })
+    end 
 end
 
 RegisterNetEvent('esx-lumberjack:StartChopping', function()
@@ -103,178 +93,63 @@ RegisterNetEvent('esx-lumberjack:StartChopping', function()
     end
 end)
 
-if Config.Job then
-    CreateThread(function()
-        for k, v in pairs(Config.TreeLocations) do
-            exports["qtarget"]:AddBoxZone("trees" .. k, v.coords, 1.5, 1.5, {
-                name = "trees" .. k,
-                heading = 40,
-                minZ = v.coords["z"] - 2,
-                maxZ = v.coords["z"] + 2,
-                debugPoly = false
-            }, {
-                options = {
-                    {
-                        action = function()
-                            if axe() then
-                                ChopLumber(k)
-                            end
-                        end,
-                        event = "esx-lumberjack:StartChopping",
-                        icon = "fa fa-hand",
-                        label = Config.Alerts["Tree_label"],
-                        job = "lumberjack",
-                        canInteract = function()
-                            if v["isChopped"] or v["isOccupied"] then
-                                return false
-                            end
-                            return true
-                        end,
-                    }
-                },
-                distance = 1.0
+local sleep = 0
+Citizen.CreateThread(function()
+  while true do
+    sleep = 1500
+    local pedCoords = GetEntityCoords(PlayerPedId()) 
+    for _, v in pairs(Config.TreeLocations) do
+        local dst = #(pedCoords - v.coords)
+        if dst < 2 then
+            sleep = 0
+            lib.showTextUI('[LALT] - Cut Tree', {
+                position = "top-center",
+                icon = 'tree',
+                style = {
+                    borderRadius = 0,
+                    backgroundColor = '#1E7929',
+                    color = 'white'
+                }
             })
-
         end
-    end)
-    exports['qtarget']:AddBoxZone("lumberjackdepo", LumberDepo.targetZone, 1, 1, {
-        name = "Lumberjackdepo",
-        heading = LumberDepo.targetHeading,
-        debugPoly = false,
-        minZ = LumberDepo.minZ,
-        maxZ = LumberDepo.maxZ,
-    }, {
-        options = {
-        {
-          event = "esx-lumberjack:bossmenu",
-          icon = "Fas Fa-hands",
-          label = Config.Alerts["depo_label"],
-          job = "lumberjack",
-        },
-        },
-        distance = 1.0
-    })
-    exports['qtarget']:AddBoxZone("LumberProcessor", LumberProcessor.targetZone, 1, 1, {
-        name = "LumberProcessor",
-        heading = LumberProcessor.targetHeading,
-        debugPoly = false,
-        minZ = LumberProcessor.minZ,
-        maxZ = LumberProcessor.maxZ,
-    }, {
-        options = {
-        {
-          event = "esx-lumberjack:processormenu",
-          icon = "Fas Fa-hands",
-          label = Config.Alerts["mill_label"],
-          job = "lumberjack",
-        },
-        },
-        distance = 1.0
-    })
-    exports['qtarget']:AddBoxZone("LumberSeller", LumberSeller.targetZone, 1, 1, {
-        name = "LumberProcessor",
-        heading = LumberSeller.targetHeading,
-        debugPoly = false,
-        minZ = LumberSeller.minZ,
-        maxZ = LumberSeller.maxZ,
-    }, {
-        options = {
-        {
-          type = "server",
-          event = "esx-lumberjack:sellItems",
-          icon = "fa fa-usd",
-          label = Config.Alerts["Lumber_Seller"],
-          job = "lumberjack",
-        },
-        },
-        distance = 1.0
-    })
-else
-    CreateThread(function()
-        for k, v in pairs(Config.TreeLocations) do
-            exports["qtarget"]:AddBoxZone("trees" .. k, v.coords, 1.5, 1.5, {
-                name = "trees" .. k,
-                heading = 40,
-                minZ = v.coords["z"] - 2,
-                maxZ = v.coords["z"] + 2,
-                debugPoly = false
-            }, {
-                options = {
-                    {
-                        action = function()
-                            if axe() then
-                                ChopLumber(k)
-                            end
-                        end,
-                        type = "client",
-                        event = "esx-lumberjack:StartChopping",
-                        icon = "fa fa-hand",
-                        label = Config.Alerts["Tree_label"],
-                        canInteract = function()
-                            if v["isChopped"] or v["isOccupied"] then
-                                return false
-                            end
-                            return true
-                        end,
-                    }
-                },
-                distance = 1.0
-            })
+    end
+    Citizen.Wait(sleep)
+   end
+end)
 
-        end
-    end)
-    exports['qtarget']:AddBoxZone("lumberjackdepo", LumberDepo.targetZone, 1, 1, {
-        name = "Lumberjackdepo",
-        heading = LumberDepo.targetHeading,
-        debugPoly = false,
-        minZ = LumberDepo.minZ,
-        maxZ = LumberDepo.maxZ,
-    }, {
-        options = {
-        {
-          type = "client",
-          event = "esx-lumberjack:bossmenu",
-          icon = "Fas Fa-hands",
-          label = Config.Alerts["depo_label"],
-        },
-        },
-        distance = 1.0
-    })
-    exports['qtarget']:AddBoxZone("LumberProcessor", LumberProcessor.targetZone, 1, 1, {
-        name = "LumberProcessor",
-        heading = LumberProcessor.targetHeading,
-        debugPoly = false,
-        minZ = LumberProcessor.minZ,
-        maxZ = LumberProcessor.maxZ,
-    }, {
-        options = {
-        {
-          type = "client",
-          event = "esx-lumberjack:processormenu",
-          icon = "Fas Fa-hands",
-          label = Config.Alerts["mill_label"],
-        },
-        },
-        distance = 1.0
-    })
-    exports['qtarget']:AddBoxZone("LumberSeller", LumberSeller.targetZone, 1, 1, {
-        name = "LumberProcessor",
-        heading = LumberSeller.targetHeading,
-        debugPoly = false,
-        minZ = LumberSeller.minZ,
-        maxZ = LumberSeller.maxZ,
-    }, {
-        options = {
-        {
-          type = "server",
-          event = "esx-lumberjack:sellItems",
-          icon = "fa fa-usd",
-          label = Config.Alerts["Lumber_Seller"],
-        },
-        },
-        distance = 1.0
-    })
-end
+CreateThread(function()
+    for k, v in pairs(Config.TreeLocations) do
+        exports["qtarget"]:AddBoxZone("trees" .. k, v.coords, 1.5, 1.5, {
+            name = "trees" .. k,
+            heading = 40,
+            minZ = v.coords["z"] - 2,
+            maxZ = v.coords["z"] + 2,
+            debugPoly = false
+        }, {
+            options = {
+                {
+                    action = function()
+                        if axe() then
+                            ChopLumber(k)
+                        end
+                    end,
+                    event = "esx-lumberjack:StartChopping",
+                    icon = "fa fa-hand",
+                    label = Config.Alerts["Tree_label"],
+                    job = "lumberjack",
+                    item = 'axe',
+                    canInteract = function()
+                        if v["isChopped"] or v["isOccupied"] then
+                            return false
+                        end
+                        return true
+                    end,
+                }
+            },
+            distance = 1.0
+        })
+    end
+end)
 
 RegisterNetEvent('esx-lumberjack:vehicle', function()
     local vehicle = LumberDepo.Vehicle
@@ -288,7 +163,11 @@ RegisterNetEvent('esx-lumberjack:vehicle', function()
         local JobVehicle = CreateVehicle(vehicle, coords, 45.0, true, false)
         SetVehicleHasBeenOwnedByPlayer(JobVehicle,  true)
         SetEntityAsMissionEntity(JobVehicle,  true,  true)
+        Plate = GetVehicleNumberPlateText(JobVehicle)
+        veh_name = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(JobVehicle)))
         Config.FuelSystem(JobVehicle, 100.0)
+        exports['t1ger_keys']:SetVehicleLocked(JobVehicle, 0)
+        exports['t1ger_keys']:GiveTemporaryKeys(Plate, veh_name, "LumberJack Vehicle")
         local id = NetworkGetNetworkIdFromEntity(JobVehicle)
         DoScreenFadeOut(1500)
         Wait(1500)
@@ -313,105 +192,53 @@ RegisterNetEvent('esx-lumberjack:getaxe', function()
 end)
 
 RegisterNetEvent('esx-lumberjack:bossmenu', function()
-    ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'boss_menu', {
-        title    = Config.Alerts["vehicle_header"],
-        align    = 'top-left',
-        elements = {
-            {label = Config.Alerts["vehicle_text"], event = 'esx-lumberjack:vehicle'},
-            {label = Config.Alerts["remove_text"], event = 'esx-lumberjack:removevehicle'},
-            {label = Config.Alerts["battleaxe_text"], event = 'esx-lumberjack:getaxe'},
-    }}, function(data, menu)
-        TriggerEvent(data.current.event)
-        menu.close()
-    end, function(data, menu)
-        menu.close()
-    end)
+    lib.registerContext({
+        id = 'VehicleMenu',
+        title = Config.Alerts["vehicle_header"],
+        options = {
+            {
+                title = Config.Alerts["vehicle_text"],
+                arrow = true,
+                event = 'esx-lumberjack:vehicle',
+            },
+            {
+                title = Config.Alerts["remove_text"],
+                arrow = true,
+                event = 'esx-lumberjack:removevehicle',
+            },
+        },
+    })
+    lib.showContext('VehicleMenu')
 end)
 
 RegisterNetEvent('esx-lumberjack:processormenu', function()
-    ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'boss_menu', {
-        title    = Config.Alerts["lumber_mill"],
-        align    = 'top-left',
-        elements = {
-            {label = Config.Alerts["lumber_text"], event = 'esx-lumberjack:processor'},
-            {label = Config.Alerts["remove_text"], event = 'esx-lumberjack:removevehicle'},
-            {label = Config.Alerts["battleaxe_text"], event = 'esx-lumberjack:getaxe'},
-    }}, function(data, menu)
-        TriggerEvent(data.current.event)
-        menu.close()
-    end, function(data, menu)
-        menu.close()
-    end)
+    lib.registerContext({
+        id = 'processormenu',
+        title = Config.Alerts["lumber_mill"],
+        options = {
+            {
+                title = Config.Alerts["lumber_text"],
+                arrow = true,
+                event = 'esx-lumberjack:processor',
+            },
+            {
+                title = Config.Alerts["battleaxe_text"],
+                arrow = true,
+                event = 'esx-lumberjack:getaxe',
+            },
+        },
+    })
+    lib.showContext('processormenu')
 end)
 
 RegisterNetEvent('esx-lumberjack:processor', function()
+    local ped = PlayerPedId()
     ESX.TriggerServerCallback('esx-lumberjack:lumber', function(lumber)
-      if lumber then
-        --[[
-        TriggerEvent("mythic_progbar:client:progress", {
-        name = "unique_action_name",
-        duration = 10000,
-        label = "Action Label",
-        useWhileDead = false,
-        canCancel = true,
-        controlDisables = {
-            disableMovement = true,
-            disableCarMovement = true,
-            disableMouse = false,
-            disableCombat = true,
-        },
-        animation = {
-            animDict = "missheistdockssetup1clipboard@idle_a",
-            anim = "idle_a",
-        },
-        prop = {
-            model = "prop_paper_bag_small",
-        }
-    }, function(status)
-        if not status then
-            -- Do Something If Event Wasn't Cancelled
+        if lumber then
+            TriggerServerEvent("esx-lumberjack:lumberprocessed")
+            ClearPedTasks(ped)
+        else
+            ESX.ShowNotification(Config.Alerts['error_lumber'])
         end
     end)
-        ]]
-        TriggerEvent("mythic_progbar:client:progress", {
-            name = "lumber_trader",
-            duration = LumberJob.ProcessingTime,
-            label = Config.Alerts['lumber_progressbar'],
-            useWhileDead = false,
-            canCancel = true,
-            controlDisables = {
-                disableMovement = true,
-                disableCarMovement = true,
-                disableMouse = false,
-                disableCombat = true,
-            },
-            animation = {
-                animDict = "missheistdockssetup1clipboard@idle_a",
-                anim = "idle_a",
-            },
-            prop = {
-                model = "prop_paper_bag_small",
-            }
-        }, function(status)
-            if not status then
-                TriggerServerEvent("esx-lumberjack:lumberprocessed")
-            else 
-                ESX.ShowNotification(Config.Alerts['cancel'])
-            end
-        end)
-    --     QBCore.Functions.Progressbar('lumber_trader', Config.Alerts['lumber_progressbar'], LumberJob.ProcessingTime , false, true, {
-    --     disableMovement = true,
-    --     disableCarMovement = true,
-    --     disableMouse = false,
-    --     disableCombat = true,
-    --     }, {}, {}, {}, function()    
-    --         TriggerEvent('animations:client:EmoteCommandStart', {"c"})
-    --         TriggerServerEvent("esx-lumberjack:lumberprocessed")
-    --     end, function() 
-    --       ESX.ShowNotification(Config.Alerts['cancel'])
-    --     end)
-    else
-         ESX.ShowNotification(Config.Alerts['error_lumber'])
-    end
-    end)
-  end)
+end)
