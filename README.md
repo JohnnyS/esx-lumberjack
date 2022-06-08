@@ -1,3 +1,10 @@
+# Fork Details
+
+Usage with OX_Inventory
+Uses Ox_Lib TextUI
+Changes to the menu as well
+
+
 # esx-lumberjack
 
 LumberJack Script for QBCore - Converted to ESX by Mycroft (Manager of ESX-Framework)
