@@ -4,7 +4,7 @@ Config.UseBlips = true                                              -- True / fa
 Config.Timeout = 20 * (60 * 1000)                                   -- 20 minutes
 
 Config.FuelSystem = function(vehicle, level)
-  --  exports['LegacyFuel']:SetFuel(vehicle, level)
+    exports['LegacyFuel']:SetFuel(vehicle, level)
 end
 
 -- Blips
@@ -17,7 +17,7 @@ Config.Blips = {
         SetBlipDisplay = 6,                                             -- Blip Behavior (https://docs.fivem.net/natives/?_0x9029B2F3DA924928)
         SetBlipScale = 0.8,                                            -- Blip Size
         SetBlipColour = 5,                                              -- Blip Color
-        BlipLabel = "Lumber Depo",                                      -- Blip Label
+        BlipLabel = "~g~Lumber Depo~g~",                                      -- Blip Label
         minZ = 31.92,                                                   -- Max Z
         maxZ = 35.92,                                                   -- Max Z
         Vehicle = 'tiptruck',                                           -- Job Vehicle
@@ -31,19 +31,19 @@ Config.Blips = {
         SetBlipDisplay = 6,
         SetBlipScale = 0.8,
         SetBlipColour = 64,
-        BlipLabel = "Lumber Processor",
+        BlipLabel = "~g~Lumber Processor~g~",
         minZ = 77.26,
         maxZ = 81.26,
     },
     LumberSeller = {
-        targetZone = vector3(259.44, -3059.57, 4.86),
-        targetHeading = 131.34,
-        coords = vector4(259.44, -3059.57, 4.86, 131.34),
-        SetBlipSprite = 605,
+        targetZone = vector3(-510.6066,-942.8835,23.0564),
+        targetHeading = 153.0709,
+        coords = vector4(-510.6066, -942.8835, 23.0564, 153.0709),
+        SetBlipSprite = 365,
         SetBlipDisplay = 6,
         SetBlipScale = 0.8,
-        SetBlipColour = 45,
-        BlipLabel = "Lumber Seller",
+        SetBlipColour = 64,
+        BlipLabel = "~g~Lumber Seller~g~",
         minZ = 2.86,
         maxZ = 6.86,
 }}
@@ -53,7 +53,7 @@ LumberJob = {
     LumberHash = 0xD7DA9E99,                                        -- Hash numbers for ped model
     
     ChoppingTreeTimer = 12 * 1000,                                  -- 12 second timer
-    ProcessingTime = 10 * 1000,                                     -- 10 second timer
+    ProcessingTime = 7 * 1000,                                     -- 10 second timer
 
     LumberAmount_Min = 2,
     LumberAmount_Max = 6,
@@ -67,13 +67,13 @@ LumberJob = {
     TradeRecevied_Min = 1,
     TradeRecevied_Max = 3,
 
-    AxePrice = 100,                                                 -- Axe Price ($100)
+    AxePrice = 500,                                                 -- Axe Price ($100)
 }
 
 Config.Sell = {
-    tree_lumber = math.random(45, 60),                          -- Seller Price,
-    tree_bark = math.random(20, 30),
-    wood_plank = math.random(65, 100),
+    tree_lumber = math.random(100, 135),                          -- Seller Price,
+    tree_bark = math.random(30, 40),
+    wood_plank = math.random(150, 200),
 }
 
 Config.Axe = {
@@ -82,18 +82,18 @@ Config.Axe = {
 
 Config.TreeLocations = {
     {
-        coords = vector3(-504.47, 5392.09, 75.82),
-        isChopped = false,
+        coords = vector3(-504.47, 5392.09, 75.82), 
+        isChopped = false, 
         isOccupied = false,
     },
     {
-        coords = vector3(-510.08, 5389.15, 73.71),
-        isChopped = false,
+        coords = vector3(-510.08, 5389.15, 73.71), 
+        isChopped = false, 
         isOccupied = false,
     },
     {
-        coords = vector3(-558.32, 5418.98, 62.78),
-        isChopped = false,
+        coords = vector3(-558.32, 5418.98, 62.78), 
+        isChopped = false, 
         isOccupied = false,
     },
     {
@@ -246,6 +246,44 @@ Config.TreeLocations = {
         isChopped = false,
         isOccupied = false,
     },
+    --Custom
+    {
+        coords = vector3(-446.67, 5396.27, 79.31),
+        isChopped = false,
+        isOccupied = false,
+    },
+    {
+        coords = vector3(-586.17, 5447.01, 60.1),
+        isChopped = false,
+        isOccupied = false,
+    },
+    {
+        coords = vector3(-591.82, 5448.87, 59.92),
+        isChopped = false,
+        isOccupied = false,
+    },
+    {
+        coords = vector3(-564.3, 5457.47, 61.71),
+        isChopped = false,
+        isOccupied = false,
+    },
+    {
+        coords = vector3(-561.22, 5460.93, 63.9),
+        isChopped = false,
+        isOccupied = false,
+    },
+    {
+        coords = vector3(-538.15, 5483.92, 65.33),
+        isChopped = false,
+        isOccupied = false,
+    },
+    {
+        coords = vector3(-540.52, 5492.39, 63.67),
+        isChopped = false,
+        isOccupied = false,
+    },
+    
+    
 }
 
 Config.Alerts = {
